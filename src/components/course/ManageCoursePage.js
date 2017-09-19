@@ -5,17 +5,18 @@ import * as courseActions from "../../actions/courseActions";
 import * as authorActions from "../../actions/authorActions";
 import CourseForm from "./CourseForm";
 import toastr from "toastr";
+import { withRouter } from 'react-router';
 
-class ManageCoursePage extends React.Component {
-    constructor(props, context) {
-        super(props, context);
+export class ManageCoursePage extends React.Component {
+    constructor(props) {
+        super(props);
 
         this.state = {
             course: Object.assign({}, this.props.course),
             errors: {},
             saving: false
         };
-
+        this.toastr = toastr;
         this.updateCourseState = this.updateCourseState.bind(this);
         this.saveCourse = this.saveCourse.bind(this);
     }
@@ -43,7 +44,7 @@ class ManageCoursePage extends React.Component {
         this.props.actions.saveCourse(this.state.course)
             .then(() => this.redirect())
             .catch((error) => {
-                toastr.error(error);
+                this.toastr.error(error);
                 this.setState({ saving: false });
             });
         // we can access the actions from our props because we mapped the dispatch to our props below?
@@ -51,8 +52,8 @@ class ManageCoursePage extends React.Component {
 
     redirect() {
         this.setState({ saving: false });
-        toastr.success("Course saved!");
-        this.context.router.push("/courses");
+        this.toastr.success("Course saved!");
+        this.props.router.push("/courses");
     }
 
     render() {
@@ -75,11 +76,6 @@ ManageCoursePage.propTypes = {
     course: PropTypes.object.isRequired,
     authors: PropTypes.array.isRequired,
     actions: PropTypes.object.isRequired
-};
-
-//Pull in the React Router context so router is available on this.context.router
-ManageCoursePage.contextTypes = {
-    router: PropTypes.object
 };
 
 function getCourseById(courses, id) {
@@ -115,4 +111,4 @@ function mapDispatchToProps(dispatch) {
     };
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(ManageCoursePage);
+export default withRouter(connect(mapStateToProps, mapDispatchToProps)(ManageCoursePage));
