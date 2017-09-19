@@ -1,145 +1,173 @@
-import { connect, Provider } from "react-redux";
-import * as actions from "../../actions/courseActions"
-import * as types from "../../actions/actionTypes";
-import configureMockStore from 'redux-mock-store'
-// import { createMockStore } from "redux-test-utils";
-// this worked fine and had lots of handy helper methods, but I couldn't integrate the thunk middleware.
-import React from "react";
-import { shallowWithStore } from "enzyme-redux";
-import { mount } from "enzyme"
-import thunk from 'redux-thunk'
-import renderer from 'react-test-renderer'
-import ManageCoursePage from "./ManageCoursePage";
-import courseReducer from "../../reducers/courseReducer";
+import React from 'react';
+import { shallow } from 'enzyme'
+import { ManageCoursePage } from './ManageCoursePage';
+import CourseForm from './CourseForm';
 
-describe("ManageCoursePage", () => {
-    let mockStore;
+describe('ManageCoursePage', () => {
+  let instance, props, state, wrapper;
+
+  beforeEach(() => {
+    onSave={this.saveCourse}
+    onChange={this.updateCourseState}
+    props = {
+      authors: [],
+      course: {},
+    };
+    wrapper = shallow(<ManageCoursePage {...props} />);
+    instance = wrapper.instance();
+  })
+
+  it('renders CourseForm', () => {
+    const element = wrapper.find(CourseForm);
+
+    expect(element).toBePresent();
+
+    const { allAuthors, onSave, onChange, course, errors, saving } = element.props();
+
+    expect(allAuthors).toBe(props.authors);
+    expect(onSave).toBe(instace.onSave);
+    expect(onChange).toBe(instace.updateCourseState);
+    expect(course).toBe(instance.state.course);
+    expect(errors).toBe(instance.state.errors);
+    expect(saving).toBe(instance.state.saving);
+  });
+});
+
+describe('ManageCoursePage.prototype', () => {
+  describe('componentWillReceiveProps', () => {
+    it('calls setState with the next course if it is different', () => {
+      const props = {
+        course: {
+          id: '1',
+        },
+      };
+      const nextProps = {
+        course: {
+          id: '2',
+        },
+      };
+      const setState = jest.fn();
+
+      ManageCoursePage.prototype.call({ props, setState }, nextProps);
+
+      expect(setState).toHaveBeenCalledWith({ course: nextProps.course });
+    });
+
+    it('does not call setState with the next course if it is not different', () => {
+      const props = {
+        course: {
+          id: '1',
+        },
+      };
+      const nextProps = {
+        course: {
+          id: '1',
+        },
+      };
+      const setState = jest.fn();
+
+      ManageCoursePage.prototype.call({ props, setState }, nextProps);
+
+      expect(setState).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateCourseState', () => {
+    it('calls setState with the next course if it is different', () => {
+      const event = {
+        target: {
+          name: 'courseName',
+          value: 'best course',
+        }
+      };
+      const state = {
+        course: {},
+      };
+
+      const setState = jest.fn();
+
+      ManageCoursePage.prototype.updateCourseState.call({ setState, state }, event);
+
+      expect(setState).toHaveBeenCalledWith({ course: { courseName: 'best course' } });
+    });
+  });
+
+  describe('saveCourse', () => {
+    let event, redirect, setState, state, toastr;
 
     beforeEach(() => {
-        const middlewares = [thunk];
-        mockStore = configureMockStore(middlewares);
-    })
-
-    it("should render properly", () => {
-        const firstCourse =  {
-            id: "architecture",
-            title: "Architecting Applications for the Real World",
-            watchHref: "http://www.pluralsight.com/courses/architecting-applications-dotnet",
-            authorId: "cory-house",
-            length: "2:52",
-            category: "Software Architecture"
-        };
-        const initialState = { authors: ["Cory House"], courses: [firstCourse], numAjaxCallsInProgress: 0};
-        const mapStateToProps = (state) => ({
-            state,
-          });
-        const ConnectedManageCoursePage = connect(mapStateToProps)(ManageCoursePage);
-
-        const wrapper = renderer.create(
-          <Provider store={mockStore(initialState)}>
-              <ConnectedManageCoursePage params={"architecture"}/>
-              {/* need to add in "ownProps" here that don't come from state */}
-              {/* still seeing a weird error about keys being missing, but the test passes, so... */}
-          </Provider>,
-        ).toJSON();
-        expect(wrapper).toMatchSnapshot();
+      event = {
+        preventDefault: jest.fn(),
+      };
+      redirect = jest.fn();
+      setState = jest.fn();
+      state = {
+        course: {
+          courseName: 'best course',
+        },
+      };
+      toastr = {
+        error: jest.fn();
+      };
     });
 
-    it("should have the correct default props from state", () => {
-        const initialState =  { authors: [], courses: [], numAjaxCallsInProgress: 0};
-        const mapStateToProps = (state) => ({
-            state,
-        });
-        const ConnectedManageCoursePage = connect(mapStateToProps)(ManageCoursePage);
-        const component = shallowWithStore(<ConnectedManageCoursePage />, mockStore(initialState));
-        expect(component.props().state).toBe(initialState);
-    });
-    // if we want to see how this affects the appearance of things on the page, it would probably make sense to move that stuff to an integration test.
+    it('calls redirect if props.actions.saveCourse resolves', () => {
+      const props = {
+        actions: {
+          saveCourse: jest.fn(() => Promise.resolve()),
+        },
+      };
 
-    it("should dispatch the correct actions when saving a course", () => {
-        const firstCourse =  {
-            id: "architecture",
-            title: "Architecting Applications for the Real World",
-            watchHref: "http://www.pluralsight.com/courses/architecting-applications-dotnet",
-            authorId: "cory-house",
-            length: "2:52",
-            category: "Software Architecture"
-        };
-        const initialState = { authors: ["Cory House"], courses: [firstCourse], numAjaxCallsInProgress: 0};
-        const mapStateToProps = (state) => ({
-            state,
-          });
+      ManageCoursePage.prototype.saveCourse.call({ props, setState, state, toastr, redirect }, event);
 
-        const secondCourse = {
-            id: "career-reboot-for-developer-mind",
-            title: "Becoming an Outlier: Reprogramming the Developer Mind",
-            watchHref: "http://www.pluralsight.com/courses/career-reboot-for-developer-mind",
-            authorId: "cory-house",
-            length: "2:30",
-            category: "Career"
-        }
-
-        const expectedActions = [
-            "BEGIN_AJAX_CALL",
-            "UPDATE_COURSE_SUCCESS"
-        ];
-
-        const mapDispatchToProps = (dispatch) => ({
-            saveCourse(course) {
-                dispatch(action);
-            },
-        });
-
-        const store = mockStore(initialState);
-        const ConnectedManageCoursePage = connect(mapStateToProps, mapDispatchToProps)(ManageCoursePage);
-        const component = shallowWithStore(<ConnectedManageCoursePage />, store);
-
-        return store.dispatch(actions.saveCourse(secondCourse)).then(() => {
-            // we can change this to use async/await
-            // need to do this because we're dispatching async actions using thunk
-            const actualActions = store.getActions().map(action => action.type)
-           // note: redux-mock-store only stores changes to actions, not the state.
-            expect(actualActions).toEqual(expectedActions);
-        });
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(props.actions.saveCourse).toHaveBeenCalledWith(state.course);
+      expect(redirect).toHaveBeenCalled();
     });
 
-    it("should have the correct output via the reducer", () => {
-        // we don't need to mount a component for this to take place --
-        // after all, a reducer is just a pure function.
-        // so we just test the input and output.
-        const firstCourse =  {
-            id: "architecture",
-            title: "Architecting Applications for the Real World",
-            watchHref: "http://www.pluralsight.com/courses/architecting-applications-dotnet",
-            authorId: "cory-house",
-            length: "2:52",
-            category: "Software Architecture"
-        };
-        const initialState = [firstCourse];
-        const course = {
-            id: "career-reboot-for-developer-mind",
-            title: "Becoming an Outlier: Reprogramming the Developer Mind",
-            watchHref: "http://www.pluralsight.com/courses/career-reboot-for-developer-mind",
-            authorId: "cory-house",
-            length: "2:30",
-            category: "Career"
-        }
-        const action = {
-            type: types.CREATE_COURSE_SUCCESS,
-            course: course
-        }
-        const nextState = courseReducer(initialState, action);
-        expect(nextState).toEqual([ { id: 'architecture',
-            title: 'Architecting Applications for the Real World',
-            watchHref: 'http://www.pluralsight.com/courses/architecting-applications-dotnet',
-            authorId: 'cory-house',
-            length: '2:52',
-            category: 'Software Architecture' },
-            { id: 'career-reboot-for-developer-mind',
-            title: 'Becoming an Outlier: Reprogramming the Developer Mind',
-            watchHref: 'http://www.pluralsight.com/courses/career-reboot-for-developer-mind',
-            authorId: 'cory-house',
-            length: '2:30',
-            category: 'Career' } ])
-        })
+    it('calls toastr.error and setState if props.actions.saveCourse rejects', () => {
+      const error = new Error('something went wrong');
+      const props = {
+        actions: {
+          saveCourse: jest.fn(() => Promise.reject(error)),
+        },
+      };
+
+      ManageCoursePage.prototype.saveCourse.call({ props, setState, state, toastr, redirect }, event);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(props.actions.saveCourse).toHaveBeenCalledWith(state.course);
+      expect(toastr.error).toHaveBeenCalledWith(error);
+      expect(setState).toHaveBeenCalledWith({ saving: false });
+    });
   });
+
+  describe('redirect', () => {
+    let props, redirect, toastr;
+
+    beforeEach(() => {
+      event = {
+        preventDefault: jest.fn(),
+      };
+      redirect = jest.fn();
+    });
+
+    it('calls redirect if props.actions.saveCourse resolves', () => {
+      const props = {
+        router: {
+          push: jest.fn(),
+        },
+      };
+      const setState = jest.fn();
+      const toastr = {
+        success: jest.fn();
+      };
+
+      ManageCoursePage.prototype.redirect.call({ props, setState, toastr });
+
+      expect(setState).toHaveBeenCalledWith({ saving: false });
+      expect(toastr.success).toHaveBeenCalledWith('Course saved!');
+      expect(props.router.push).toHaveBeenCalledWith('/courses');
+    });
+  });
+});
